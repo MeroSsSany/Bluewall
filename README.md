@@ -10,6 +10,18 @@ A very lightweight and customizable sandboxed class loader for **Java**.
 
 Since it checks during load-time and not during the code's execution, it does not impact performance on the running code.
 
+## Installation
+Bluewall is hosted on **JitPack**. You can include it to your project via Gradle or Maven.
+```groovy
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'com.github.MeroSsSany:Bluewall:v1.0.0'
+}
+```
+
 ## Getting Started
 
 ### Using `AccessPolicyBuilder`
