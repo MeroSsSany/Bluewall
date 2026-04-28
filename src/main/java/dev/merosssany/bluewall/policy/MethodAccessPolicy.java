@@ -1,7 +1,7 @@
 package dev.merosssany.bluewall.policy;
 
 import dev.merosssany.bluewall.AccessMode;
-import dev.merosssany.bluewall.ClassIdentifier;
+import dev.merosssany.bluewall.ClassHelper;
 import dev.merosssany.bluewall.SecurityKey;
 
 import java.lang.reflect.Method;
@@ -12,7 +12,7 @@ public class MethodAccessPolicy {
     private final Set<AccessMethod> whitelist = ConcurrentHashMap.newKeySet();
     private final Set<AccessMethod> blacklist = ConcurrentHashMap.newKeySet();
     private final SecurityKey key;
-    private AccessMode mode;
+    private AccessMode mode = AccessMode.BLACKLIST;
     
     public MethodAccessPolicy(SecurityKey key) {
         this.key = key;
@@ -60,22 +60,22 @@ public class MethodAccessPolicy {
         deny(key, new AccessMethod(method));
     }
     
-    public void removeAllowedClass(SecurityKey key, AccessMethod allowed) {
+    public void removeAllowedMethod(SecurityKey key, AccessMethod allowed) {
         if (this.key == key) whitelist.remove(allowed);
         else throw new SecurityException("Incorrect key");
     }
     
-    public void removeAllowedClass(SecurityKey key, Method allowed) {
-        removeAllowedClass(key, new AccessMethod(allowed));
+    public void removeAllowedMethod(SecurityKey key, Method allowed) {
+        removeAllowedMethod(key, new AccessMethod(allowed));
     }
     
-    public void removeDeniedClass(SecurityKey key, AccessMethod denied) {
+    public void removeDeniedMethod(SecurityKey key, AccessMethod denied) {
         if (this.key == key) blacklist.remove(denied);
         else throw new SecurityException("Incorrect key");
     }
     
-    public void removeDeniedClass(SecurityKey key, Method denied) {
-        removeDeniedClass(key, new AccessMethod(denied));
+    public void removeDeniedMethod(SecurityKey key, Method denied) {
+        removeDeniedMethod(key, new AccessMethod(denied));
     }
     
     public void clearWhitelist(SecurityKey key) {
@@ -95,9 +95,9 @@ public class MethodAccessPolicy {
     ) {
         public AccessMethod(Method method) {
             this(
-                    ClassIdentifier.toInternalName(method.getDeclaringClass()),
+                    ClassHelper.toInternalName(method.getDeclaringClass()),
                     method.getName(),
-                    ClassIdentifier.toDescriptor(method)
+                    ClassHelper.toDescriptor(method)
             );
         }
     }

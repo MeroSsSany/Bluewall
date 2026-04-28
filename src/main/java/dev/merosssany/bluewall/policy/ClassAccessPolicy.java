@@ -1,7 +1,7 @@
 package dev.merosssany.bluewall.policy;
 
 import dev.merosssany.bluewall.AccessMode;
-import dev.merosssany.bluewall.ClassIdentifier;
+import dev.merosssany.bluewall.ClassHelper;
 import dev.merosssany.bluewall.SecurityKey;
 
 import java.util.Set;
@@ -11,7 +11,7 @@ public class ClassAccessPolicy {
     private final Set<String> whitelist = ConcurrentHashMap.newKeySet();
     private final Set<String> blacklist = ConcurrentHashMap.newKeySet();
     private final SecurityKey key;
-    private AccessMode mode;
+    private AccessMode mode = AccessMode.BLACKLIST;
     
     public ClassAccessPolicy(SecurityKey key) {
         this.key = key;
@@ -38,7 +38,7 @@ public class ClassAccessPolicy {
     }
     
     public boolean isAllowed(Class<?> cls) {
-        return isAllowed(ClassIdentifier.toInternalName(cls));
+        return isAllowed(ClassHelper.toInternalName(cls));
     }
     
     public void allow(SecurityKey key, String cls) {
@@ -47,7 +47,7 @@ public class ClassAccessPolicy {
     }
     
     public void allow(SecurityKey key, Class<?> cls) {
-        allow(key, ClassIdentifier.toInternalName(cls));
+        allow(key, ClassHelper.toInternalName(cls));
     }
     
     public void deny(SecurityKey key, String cls) {
@@ -56,7 +56,7 @@ public class ClassAccessPolicy {
     }
     
     public void deny(SecurityKey key, Class<?> cls) {
-        deny(key, ClassIdentifier.toInternalName(cls));
+        deny(key, ClassHelper.toInternalName(cls));
     }
     
     public void removeAllowedClass(SecurityKey key, String allowed) {
@@ -64,8 +64,12 @@ public class ClassAccessPolicy {
         else throw new SecurityException("Incorrect key");
     }
     
+    public void removeAllowedPackage(SecurityKey key, Package allowed) {
+        removeAllowedClass(key, ClassHelper.toInternalName(allowed.getName()));
+    }
+    
     public void removeAllowedClass(SecurityKey key, Class<?> allowed) {
-        removeAllowedClass(key, ClassIdentifier.toInternalName(allowed));
+        removeAllowedClass(key, ClassHelper.toInternalName(allowed));
     }
     
     public void removeDeniedClass(SecurityKey key, String denied) {
@@ -73,8 +77,12 @@ public class ClassAccessPolicy {
         else throw new SecurityException("Incorrect key");
     }
     
+    public void removeDeniedPackage(SecurityKey key, Package pkg) {
+        removeDeniedClass(key, ClassHelper.toInternalName(pkg.getName()));
+    }
+    
     public void removeDeniedClass(SecurityKey key, Class<?> denied) {
-        removeDeniedClass(key, ClassIdentifier.toInternalName(denied));
+        removeDeniedClass(key, ClassHelper.toInternalName(denied));
     }
     
     public void clearWhitelist(SecurityKey key) {
@@ -85,5 +93,13 @@ public class ClassAccessPolicy {
     public void clearBlacklist(SecurityKey key) {
         if (this.key == key) blacklist.clear();
         else throw new SecurityException("Incorrect key");
+    }
+    
+    public void allow(SecurityKey key, Package pkg) {
+        allow(key, ClassHelper.toInternalName(pkg.getName()));
+    }
+    
+    public void deny(SecurityKey key, Package pkg) {
+        deny(key, ClassHelper.toInternalName(pkg.getName()));
     }
 }

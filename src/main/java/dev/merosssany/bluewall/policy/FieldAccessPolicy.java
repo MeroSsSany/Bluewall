@@ -1,7 +1,7 @@
 package dev.merosssany.bluewall.policy;
 
 import dev.merosssany.bluewall.AccessMode;
-import dev.merosssany.bluewall.ClassIdentifier;
+import dev.merosssany.bluewall.ClassHelper;
 import dev.merosssany.bluewall.SecurityKey;
 
 import java.lang.reflect.Field;
@@ -12,7 +12,7 @@ public class FieldAccessPolicy {
     private final Set<AccessField> whitelist = ConcurrentHashMap.newKeySet();
     private final Set<AccessField> blacklist = ConcurrentHashMap.newKeySet();
     private final SecurityKey key;
-    private AccessMode mode;
+    private AccessMode mode = AccessMode.BLACKLIST;
     
     public FieldAccessPolicy(SecurityKey key) {
         this.key = key;
@@ -60,22 +60,22 @@ public class FieldAccessPolicy {
         deny(key, new AccessField(method));
     }
     
-    public void removeAllowedClass(SecurityKey key, AccessField allowed) {
+    public void removeAllowedField(SecurityKey key, AccessField allowed) {
         if (this.key == key) whitelist.remove(allowed);
         else throw new SecurityException("Incorrect key");
     }
     
-    public void removeAllowedClass(SecurityKey key, Field allowed) {
-        removeAllowedClass(key, new AccessField(allowed));
+    public void removeAllowedField(SecurityKey key, Field allowed) {
+        removeAllowedField(key, new AccessField(allowed));
     }
     
-    public void removeDeniedClass(SecurityKey key, AccessField denied) {
+    public void removeDeniedField(SecurityKey key, AccessField denied) {
         if (this.key == key) blacklist.remove(denied);
         else throw new SecurityException("Incorrect key");
     }
     
-    public void removeDeniedClass(SecurityKey key, Field denied) {
-        removeDeniedClass(key, new AccessField(denied));
+    public void removeDeniedField(SecurityKey key, Field denied) {
+        removeDeniedField(key, new AccessField(denied));
     }
     
     public void clearWhitelist(SecurityKey key) {
@@ -94,7 +94,7 @@ public class FieldAccessPolicy {
     ) {
         public AccessField(Field field) {
             this(
-                    ClassIdentifier.toInternalName(field.getDeclaringClass()),
+                    ClassHelper.toInternalName(field.getDeclaringClass()),
                     field.getName()
             );
         }
