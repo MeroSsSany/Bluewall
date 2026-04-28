@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.MeroSsSany:Bluewall:v1.0.0'
+    implementation 'com.github.MeroSsSany:Bluewall:v1.1.0'
 }
 ```
 
