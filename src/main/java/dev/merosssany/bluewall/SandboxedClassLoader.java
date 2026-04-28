@@ -4,6 +4,8 @@ import dev.merosssany.bluewall.policy.ClassAccessPolicy;
 import dev.merosssany.bluewall.policy.FieldAccessPolicy;
 import dev.merosssany.bluewall.policy.MethodAccessPolicy;
 import org.objectweb.asm.*;
+import org.objectweb.asm.signature.SignatureReader;
+import org.objectweb.asm.signature.SignatureVisitor;
 
 public class SandboxedClassLoader extends ClassLoader {
     private final ClassAccessPolicy classPolicy;
@@ -44,7 +46,58 @@ public class SandboxedClassLoader extends ClassLoader {
                     }
                 }
                 
+                if (signature != null) {
+                    new SignatureReader(signature).accept(new SignatureVisitor(Opcodes.ASM9) {
+                        @Override
+                        public void visitClassType(String name) {
+                            if (!classPolicy.isAllowed(name)) {
+                                throw new SecurityException("Forbidden class signature type: " + name);
+                            }
+                        }
+                    });
+                }
+                
                 super.visit(version, access, name, signature, superName, interfaces);
+            }
+            
+            @Override
+            public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+                Type t = Type.getType(descriptor);
+                Type element = getType(t);
+                
+                if (element.getSort() == Type.OBJECT &&
+                        !classPolicy.isAllowed(element.getInternalName())) {
+                    throw new SecurityException("Forbidden field type: " + descriptor);
+                }
+                
+                if (signature != null) {
+                    new SignatureReader(signature).accept(new SignatureVisitor(Opcodes.ASM9) {
+                        @Override
+                        public void visitClassType(String name) {
+                            if (!classPolicy.isAllowed(name)) {
+                                throw new SecurityException("Forbidden field signature type: " + name);
+                            }
+                        }
+                    });
+                }
+                
+                return super.visitField(access, name, descriptor, signature, value);
+            }
+            
+            @Override
+            public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+                return new AnnotationVisitor(Opcodes.ASM9, super.visitAnnotation(desc, visible)) {
+                    @Override
+                    public void visit(String name, Object value) {
+                        if (value instanceof Type t) {
+                            if (t.getSort() == Type.OBJECT &&
+                                    !classPolicy.isAllowed(t.getInternalName())) {
+                                throw new SecurityException("Forbidden annotation value type: " + t);
+                            }
+                        }
+                        super.visit(name, value);
+                    }
+                };
             }
             
             @Override
@@ -80,6 +133,17 @@ public class SandboxedClassLoader extends ClassLoader {
                     }
                 }
                 
+                if (signature != null) {
+                    new SignatureReader(signature).accept(new SignatureVisitor(Opcodes.ASM9) {
+                        @Override
+                        public void visitClassType(String name) {
+                            if (!classPolicy.isAllowed(name)) {
+                                throw new SecurityException("Forbidden signature type: " + name);
+                            }
+                        }
+                    });
+                }
+                
                 return new MethodVisitor(Opcodes.ASM9) {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
@@ -92,8 +156,13 @@ public class SandboxedClassLoader extends ClassLoader {
                     
                     @Override
                     public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-                        if (!classPolicy.isAllowed(owner) ||
-                                !fieldPolicy.isAllowed(new FieldAccessPolicy.AccessField(owner, name))) {
+                        String internalName = ClassHelper.toInternalNameFromDescriptor(descriptor);
+                        if (
+                                !classPolicy.isAllowed(owner) ||
+                                !fieldPolicy.isAllowed(new FieldAccessPolicy.AccessField(owner, name)) || (
+                                internalName != null &&
+                                !classPolicy.isAllowed(internalName))
+                        ) {
                             throw new SecurityException("Forbidden field access: " + owner + "." + name);
                         }
                         super.visitFieldInsn(opcode, owner, name, descriptor);
@@ -101,21 +170,52 @@ public class SandboxedClassLoader extends ClassLoader {
                     
                     @Override
                     public void visitTypeInsn(int opcode, String type) {
-                        if (type.startsWith("[")) {
-                            Type t = Type.getType(type);
-                            if (t.getSort() == Type.ARRAY) {
-                                Type element = t.getElementType();
-                                if (element.getSort() == Type.OBJECT &&
-                                        !classPolicy.isAllowed(element.getInternalName())) {
+                        Type t = Type.getObjectType(type);
+                        
+                        if (t.getSort() == Type.ARRAY) {
+                            Type element = getType(t);
+                            if (element.getSort() == Type.OBJECT &&
+                                    !classPolicy.isAllowed(element.getInternalName())) {
                                     throw new SecurityException("Forbidden array type: " + type);
                                 }
-                            }
+                            
                         } else {
                             if (!classPolicy.isAllowed(type)) {
                                 throw new SecurityException("Forbidden type: " + type);
                             }
                         }
+                        
                         super.visitTypeInsn(opcode, type);
+                    }
+                    
+                    @Override
+                    public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+                        return getAnnotationVisitor(desc, visible);
+                    }
+                    
+                    @Override
+                    public AnnotationVisitor visitTypeAnnotation(int typeRef, TypePath typePath, String desc, boolean visible) {
+                        return getAnnotationVisitor(desc, visible);
+                    }
+                    
+                    @Override
+                    public AnnotationVisitor visitParameterAnnotation(int parameter, String desc, boolean visible) {
+                        return getAnnotationVisitor(desc, visible);
+                    }
+                    
+                    private AnnotationVisitor getAnnotationVisitor(String desc, boolean visible) {
+                        return new AnnotationVisitor(Opcodes.ASM9, super.visitAnnotation(desc, visible)) {
+                            @Override
+                            public void visit(String name, Object value) {
+                                if (value instanceof Type t) {
+                                    if (t.getSort() == Type.OBJECT &&
+                                            !classPolicy.isAllowed(t.getInternalName())) {
+                                        throw new SecurityException("Forbidden annotation value type: " + t);
+                                    }
+                                }
+                                super.visit(name, value);
+                            }
+                        };
                     }
                     
                     @Override
@@ -247,6 +347,17 @@ public class SandboxedClassLoader extends ClassLoader {
                         }
                         
                         super.visitInvokeDynamicInsn(name, descriptor, bsm, bsmArgs);
+                    }
+                    
+                    @Override
+                    public void visitMultiANewArrayInsn(String descriptor, int numDimensions) {
+                        String internalName = ClassHelper.toInternalNameFromDescriptor(descriptor);
+                        
+                        if (internalName != null) {
+                            if (!classPolicy.isAllowed(internalName)) throw new SecurityException("Forbidden multiarray type: "+internalName);
+                        }
+                        
+                        super.visitMultiANewArrayInsn(descriptor, numDimensions);
                     }
                     
                     @Override

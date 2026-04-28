@@ -1,5 +1,7 @@
 package dev.merosssany.bluewall;
 
+import org.objectweb.asm.Type;
+
 import java.lang.reflect.Method;
 import java.util.Set;
 
@@ -65,5 +67,20 @@ public class ClassHelper {
     
     public static Method getMethod(Class<?> cls, String method, Class<?>[] params) throws NoSuchMethodException {
         return cls.getMethod(method, params);
+    }
+    
+    public static String toInternalNameFromDescriptor(String descriptor) {
+        Type type = Type.getType(descriptor);
+        
+        // Unwrap arrays
+        while (type.getSort() == Type.ARRAY) {
+            type = type.getElementType();
+        }
+        
+        if (type.getSort() == Type.OBJECT) {
+            return type.getInternalName(); // e.g. java/lang/String
+        }
+        
+        return null; // primitive (I, Z, etc.)
     }
 }
