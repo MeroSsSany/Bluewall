@@ -3,8 +3,8 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'dev.merosssany'
-version = '1.0-SNAPSHOT'
+group = 'com.github.MeroSsSany'
+version = '1.0.0'
 
 repositories {
     mavenCentral()
@@ -17,6 +17,18 @@ dependencies {
 
     implementation 'org.ow2.asm:asm:9.9'
     implementation 'org.ow2.asm:asm-commons:9.9'
+}
+
+java {
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
 }
 
 test {
