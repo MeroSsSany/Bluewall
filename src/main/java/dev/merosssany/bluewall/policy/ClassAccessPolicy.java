@@ -27,6 +27,7 @@ public class ClassAccessPolicy {
     }
     
     public boolean isAllowed(String cls) {
+        if (blacklist.isEmpty() && whitelist.isEmpty()) return true;  // disabled
         if (blacklist.stream().anyMatch(cls::startsWith)) return false;
         
         if (mode == AccessMode.WHITELIST) {
@@ -74,5 +75,15 @@ public class ClassAccessPolicy {
     
     public void removeDeniedClass(SecurityKey key, Class<?> denied) {
         removeDeniedClass(key, ClassIdentifier.toInternalName(denied));
+    }
+    
+    public void clearWhitelist(SecurityKey key) {
+        if (this.key == key) whitelist.clear();
+        else throw new SecurityException("Incorrect key");
+    }
+    
+    public void clearBlacklist(SecurityKey key) {
+        if (this.key == key) blacklist.clear();
+        else throw new SecurityException("Incorrect key");
     }
 }

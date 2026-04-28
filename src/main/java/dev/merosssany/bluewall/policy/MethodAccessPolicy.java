@@ -28,6 +28,7 @@ public class MethodAccessPolicy {
     }
     
     public boolean isAllowed(AccessMethod method) {
+        if (blacklist.isEmpty() && whitelist.isEmpty()) return true; // disabled
         if (blacklist.contains(method)) return false;
         
         if (mode == AccessMode.WHITELIST) {
@@ -75,6 +76,16 @@ public class MethodAccessPolicy {
     
     public void removeDeniedClass(SecurityKey key, Method denied) {
         removeDeniedClass(key, new AccessMethod(denied));
+    }
+    
+    public void clearWhitelist(SecurityKey key) {
+        if (this.key == key) whitelist.clear();
+        else throw new SecurityException("Incorrect key");
+    }
+    
+    public void clearBlacklist(SecurityKey key) {
+        if (this.key == key) blacklist.clear();
+        else throw new SecurityException("Incorrect key");
     }
     
     public record AccessMethod(
